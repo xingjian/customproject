@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="地图测量" creationComplete="init()" close="closeWindow(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="200" height="200">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.actions.DrawLine;
+			import com.supermap.web.actions.DrawPolygon;
+			import com.supermap.web.actions.Pan;
+			import com.supermap.web.core.Feature;
+			import com.supermap.web.core.geometry.GeoRegion;
+			import com.supermap.web.events.DrawEvent;
+			import com.supermap.web.iServerJava6R.measureServices.MeasureParameters;
+			import com.supermap.web.iServerJava6R.measureServices.MeasureResult;
+			import com.supermap.web.iServerJava6R.measureServices.MeasureService;
+			import com.supermap.web.mapping.FeaturesLayer;
+			import com.supermap.web.mapping.Map;
+			
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			
+			public var map:Map;
+			public var distanceFeatureLayer:FeaturesLayer;
+			private var drawLine:DrawLine;
+			private var drawPolygon:DrawPolygon;
+			private var lastFeature:Feature;
+			public var restUrl:String;
+			//初始化方法
+			public function init():void{
+				drawLine = new DrawLine(map);
+				drawLine.addEventListener(DrawEvent.DRAW_END,addFeature);
+				drawPolygon = new DrawPolygon(map);
+				drawPolygon.addEventListener(DrawEvent.DRAW_END,addFeature);
+			}
+			
+			public function closeWindow(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			//矢量要素绘制完毕事件 DrawEvent.DRAW_END 的侦听函数
+			private function addFeature(event:DrawEvent):void{
+				distanceFeatureLayer.clear();
+				lastFeature = event.feature;
+				distanceFeatureLayer.addFeature(event.feature);
+				
+				var meatureType:String;
+				if(lastFeature.geometry is GeoRegion)
+					meatureType = "area";
+				else{
+					meatureType= "distance";
+				}
+				var measureParam:MeasureParameters = new MeasureParameters(lastFeature.geometry);
+				var measureService:MeasureService = new MeasureService(restUrl);
+				measureService.processAsync(measureParam, new AsyncResponder(this.displayMeasureRecords, this.measureError, meatureType));
+			}
+			
+			protected function addLineClick(event:MouseEvent):void
+			{
+				distanceFeatureLayer.clear();
+				map.action = drawLine;
+				setImageColor(imageLine,true);
+				setImageColor(imagePoly,false);
+				setImageColor(imageClear,false);
+			}
+			private function addPolygonClick(event:MouseEvent):void
+			{
+				distanceFeatureLayer.clear();
+				map.action = drawPolygon;
+				setImageColor(imagePoly,true);
+				setImageColor(imageLine,false);
+				setImageColor(imageClear,false);
+			}
+			
+			//显示查询结果
+			private function displayMeasureRecords(measureResult:MeasureResult, mark:Object = null):void
+			{
+				var info:String;
+				var temp:Number
+				if (mark == "distance"){
+					temp = Number(measureResult.distance);
+					temp /= 1000;
+					info = temp.toFixed(2);
+					info += " 千米";
+				}else{
+					temp = Number(measureResult.area);
+					temp /= 1000 * 1000;
+					info = temp.toFixed(2);
+					info += " 平方千米";
+				}
+				minfo.text = "量算结果：" + info;
+				map.action = new Pan(map);
+			}
+			
+			//量算出错
+			private function measureError(object:Object, mark:Object = null):void{
+				Alert.show("量算出错，请检查您的参数设置","系统提示");
+			}
+			
+			public function clearResult():void{
+				setImageColor(imageClear,true);
+				setImageColor(imageLine,false);
+				setImageColor(imagePoly,false);
+				distanceFeatureLayer.clear();
+				map.action = new Pan(map);
+				minfo.text = "";
+			}
+			
+			public function setImageColor(image:Image,boo:Boolean):void{
+				var imageId:String = image.id;
+				if(imageId.indexOf('Line')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_draw_line_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_draw_line.png";
+					}				
+				}else if(imageId.indexOf('Clear')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_clear_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_clear.png";
+					}	
+				}else if(imageId.indexOf('Poly')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_draw_poly_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_draw_poly.png";
+					}	
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup left="5" top="5" width="100%" height="100%" right="5" horizontalAlign="center" gap="10">
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Image id="imageLine" source="com/zysupermap/images/i_draw_line.png" toolTip="线" buttonMode="true" click="addLineClick(event)" />
+			<s:Image id="imagePoly" source="com/zysupermap/images/i_draw_poly.png" toolTip="面" buttonMode="true" click="addPolygonClick(event)" />
+			<s:Image id="imageClear" source="com/zysupermap/images/i_clear.png" toolTip="清空" buttonMode="true" click="clearResult()" />
+		</s:HGroup>
+		<s:TextArea id="minfo" width="180" height="70" borderVisible="false" editable="false">
+			
+		</s:TextArea>
+	</s:VGroup>
+</s:TitleWindow>

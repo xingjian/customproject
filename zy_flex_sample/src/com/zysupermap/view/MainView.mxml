@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"  creationComplete="init()"
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:supermap="http://www.supermap.com/iclient/2010" xmlns:ns="http://www.supermap.com/iserverjava/2010" xmlns:view="com.zysupermap.view.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.core.Rectangle2D;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.menuClasses.MenuBarItem;
+			import mx.events.MenuEvent;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			public var menuData:ArrayCollection = new ArrayCollection();
+			public var searchView:SearchView;
+			public var bufferView:BufferView;
+			public var layerView:LayerView;
+			public var meatureView:MeatureView;
+			public var helpView:HelpView;
+			public var ztuView:ZTUView;
+			public var jhcxView:JHSearchView;
+			[Bindable]
+			public var mapURL:String = "http://localhost:8090/iserver/services/map-zy_google/rest/maps/zy_google";
+			public var mapFeatureURL:String = "http://localhost:8090/iserver/services/data-zy_google/rest/data/featureResults";
+			public var geometryBufferUrl:String = "http://localhost:8090/iserver/services/spatialAnalysis-zy_google/restjsr/spatialanalyst";
+			public function init():void{
+				initMenuData();
+				initMap();
+			}
+			
+			public function initMap():void{
+				map.viewBounds = new Rectangle2D(12848076.2767,4785164.1179,13080882.6149,5021027.4598);
+				compass.defaultFullExtent = new Rectangle2D(12848076.2767,4785164.1179,13080882.6149,5021027.4598);
+			}
+			
+			private function initMenuData():void{
+				var mainNode:Object = new Object();
+				mainNode.label = "首页";
+				mainNode.uri = "main";
+				var sjfxNode:Object = new Object();
+				sjfxNode.label = "空间查询";
+				sjfxNode.uri = "kjcx";
+				var jhcxNode:Object = new Object();
+				jhcxNode.label = "几何查询";
+				jhcxNode.uri = "jhcx";
+				var baseDataNode:Object = new Object();
+				baseDataNode.label = "缓冲区分析";
+				baseDataNode.uri = "hcqfx";
+				var ztuNode:Object = new Object();
+				ztuNode.label = "图层管理";
+				ztuNode.uri = "tcgl";
+				var ztuglNode:Object = new Object();
+				ztuglNode.label = "专题图管理";
+				ztuglNode.uri = "zttgl";
+				var zymlNode:Object = new Object();
+				zymlNode.label = "地图测量";
+				zymlNode.uri = "dtcl";
+				var helpNode:Object = new Object();
+				helpNode.label = "系统帮助";
+				helpNode.uri = "help";
+				menuData.addItem(mainNode);
+				menuData.addItem(sjfxNode);
+				menuData.addItem(jhcxNode);
+				menuData.addItem(baseDataNode);
+				menuData.addItem(ztuNode);
+				menuData.addItem(ztuglNode);
+				menuData.addItem(zymlNode);
+				menuData.addItem(helpNode);
+			}
+			
+			public function menubarItemClickHandler(event:Event):void{
+				var m:MenuBarItem = MenuBarItem(menuBar.getChildAt(menuBar.selectedIndex+1));
+				var uriStr:String = m.data.uri;
+				if(uriStr=="kjcx"){
+					if(null==searchView){
+						searchView = new SearchView();
+						searchView.map = map;
+						searchView.gisSearchFeatureLayer = baseLayer;
+						searchView.mapUrl = mapURL;
+					}
+					PopUpManager.addPopUp(searchView,this,false);
+					PopUpManager.centerPopUp(searchView);
+				}else if(uriStr=="hcqfx"){
+					if(null==bufferView){
+						bufferView = new BufferView();
+						bufferView.gisBufferFeatureLayer = baseLayer;
+						bufferView.map = map;
+						bufferView.mapFeatureURL = mapFeatureURL;
+						bufferView.geometryBufferUrl = geometryBufferUrl;
+					}
+					PopUpManager.addPopUp(bufferView,this,false);
+					PopUpManager.centerPopUp(bufferView);
+				}else if(uriStr=="tcgl"){
+					if(null==layerView){
+						layerView = new LayerView();
+						layerView.mapURL = mapURL;
+						layerView.layer = tdrLayer;
+						layerView.map = map;
+					}
+					PopUpManager.addPopUp(layerView,this,false);
+					PopUpManager.centerPopUp(layerView);
+				}else if(uriStr=="dtcl"){
+					if(null==meatureView){
+						meatureView = new MeatureView();
+						meatureView.restUrl = mapURL;
+						meatureView.map = map;
+						meatureView.distanceFeatureLayer = baseLayer;
+					}
+					PopUpManager.addPopUp(meatureView,this,false);
+					PopUpManager.centerPopUp(meatureView);
+				}else if(uriStr=="help"){
+					if(null==helpView){
+						helpView = new HelpView();
+					}
+					PopUpManager.addPopUp(helpView,this,false);
+					PopUpManager.centerPopUp(helpView);
+				}else if(uriStr=="zttgl"){
+					if(null==ztuView){
+						ztuView = new ZTUView();
+						ztuView.map = map;
+						ztuView.gisSearchFeatureLayer = baseLayer;
+						ztuView.mapUrl = mapURL;
+					}
+					PopUpManager.addPopUp(ztuView,this,false);
+					PopUpManager.centerPopUp(ztuView);
+				}else if(uriStr=="jhcx"){
+					if(null==jhcxView){
+						jhcxView = new JHSearchView();
+						jhcxView.gisBufferFeatureLayer = baseLayer;
+						jhcxView.resultFeatureLayer = graphicsLayer;
+						jhcxView.map = map;
+						jhcxView.mapFeatureURL = mapFeatureURL;
+					}
+					PopUpManager.addPopUp(jhcxView,this,false);
+					PopUpManager.centerPopUp(jhcxView);
+				}
+			}
+			
+			private function layerBtnClick(type:String):void{
+				if(type=="map"){
+					gMap.visible = true;
+					gMapSate.visible = false;
+					gMapAnno.visible = false;
+					gMapTerr.visible = false;
+				}else if(type=="terrain"){
+					gMap.visible = false;
+					gMapSate.visible = false;
+					gMapAnno.visible = true;
+					gMapTerr.visible = true;
+				}else if(type=="satellite"){
+					gMap.visible = false;
+					gMapSate.visible = true;
+					gMapAnno.visible = true;
+					gMapTerr.visible = false;
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" horizontalAlign="center" gap="0">
+		<mx:MenuBar id="menuBar" width="100%" fontFamily="微软雅黑" height="30" labelField="label"   dataProvider="{menuData}" fontWeight="bold"	fontSize="13" click="menubarItemClickHandler(event)" >
+		</mx:MenuBar>
+		<s:Group width="100%" height="100%">
+			<supermap:Map width="100%" height="100%" id="map">
+				<view:TiledGoogleMapLayer id="gMap" mapType="map" />
+				<view:TiledGoogleMapLayer id="gMapSate" mapType="satellite" visible="false" />
+				<view:TiledGoogleMapLayer id="gMapTerr" mapType="terrain" visible="false" />
+				<view:TiledGoogleMapLayer id="gMapAnno" mapType="annotation" visible="false" />
+				<ns:TiledDynamicRESTLayer url="{mapURL}" id="tdrLayer" transparent="true" />
+				<supermap:FeaturesLayer id="baseLayer" />
+				<supermap:FeaturesLayer id="graphicsLayer" />
+			</supermap:Map>
+			<view:CompassCustom id="compass" map="{map}" left="10" top="10"/>
+			<supermap:ZoomSlider map="{map}" x="30" y="84"/>
+			<supermap:ScaleBar map="{map}" bottom="30" left="20"/>
+			<s:Button label="矢量图" top="7" right="175" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('map')" />
+			<s:Button label="影像图" top="7" right="90" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('satellite')" />
+			<s:Button label="地形图" top="7" right="5" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('terrain')" />
+		</s:Group>
+	</s:VGroup>
+</s:Group>

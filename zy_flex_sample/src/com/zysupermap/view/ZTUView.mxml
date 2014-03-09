@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="专题图管理" creationComplete="init()" close="closeWindow(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="120" height="300" xmlns:view="com.zysupermap.view.*" xmlns:supermap="http://www.supermap.com/iclient/2010">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<supermap:PictureMarkerStyle id="pms1" source="com/zysupermap/images/ztu1.png" />
+		<supermap:PictureMarkerStyle id="pms2" source="com/zysupermap/images/ztu2.png" />
+		<supermap:PictureMarkerStyle id="pms3" source="com/zysupermap/images/ztu3.png" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.core.Feature;
+			import com.supermap.web.core.Point2D;
+			import com.supermap.web.core.Rectangle2D;
+			import com.supermap.web.core.geometry.GeoLine;
+			import com.supermap.web.core.geometry.GeoPoint;
+			import com.supermap.web.core.geometry.GeoRegion;
+			import com.supermap.web.core.geometry.Geometry;
+			import com.supermap.web.core.styles.PictureMarkerStyle;
+			import com.supermap.web.iServerJava6R.FilterParameter;
+			import com.supermap.web.iServerJava6R.Recordset;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLParameters;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLService;
+			import com.supermap.web.iServerJava6R.queryServices.QueryResult;
+			import com.supermap.web.mapping.FeaturesLayer;
+			import com.supermap.web.mapping.Map;
+			import com.zysupermap.event.AppEvent;
+			import com.zysupermap.renderer.ResultItem;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.events.FaultEvent;
+			
+			import spark.components.CheckBox;
+			import spark.components.TextArea;
+			import spark.components.supportClasses.ItemRenderer;
+			
+			public var checkArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var searchLayers:Array;
+			public var map:Map;
+			public var mapUrl:String;
+			public var gisSearchFeatureLayer:FeaturesLayer;
+			[Bindable]
+			public var allData:ArrayCollection = new ArrayCollection();
+			public var arr:Array =["enterprise@zy_google:重点企业","pollution@zy_google:重污染源","company@zy_google:事业单位"];
+			//初始化方法
+			public function init():void{
+				for(var i:int=0;i<arr.length;i++){
+					var layerStr:String = arr[i];
+					var arrTemp:Array = layerStr.split(":");
+					var layerID:String = arrTemp[0] as String;
+					gisQueryRes(layerID);
+				}
+				initGroupLayer();
+			}
+			
+			private function gisQueryRes(datasetName:String):void {
+				var queryBySQLParam:QueryBySQLParameters = new QueryBySQLParameters();
+				var filter:FilterParameter = new FilterParameter();
+				filter.name =datasetName;
+				filter.attributeFilter = "";
+				queryBySQLParam.filterParameters = [filter];
+				queryBySQLParam.returnContent = true;
+				var queryByDistanceService:QueryBySQLService = new QueryBySQLService(mapUrl);
+				queryByDistanceService.processAsync(queryBySQLParam, new AsyncResponder(this.searchResultHandle,excuteErrors, datasetName));
+			}
+			
+			private function excuteErrors(error:FaultEvent,mark:Object):void{
+				Alert.show("数据查询异常,请确认在数据服务已经发布!","系统提示");
+			}
+			
+			private function searchResultHandle(queryResult:QueryResult, mark:Object):void{
+				var ids:Array = [];
+				var features:Array = [];
+				var recordSets:Array = queryResult.recordsets;
+				if(recordSets.length>0){
+					for(var i:int=0;i<recordSets.length;i++){
+						var recordSet:Recordset=recordSets[i];
+						var type:String = recordSet.datasetName;
+						var layertype:String = transferLayer(type);
+						if(recordSet.features!=null&&recordSet.features.length>0) {
+							for(var j:int=0;j<recordSet.features.length;j++){
+								var feature:Feature=recordSet.features[j];
+								var name:String = feature.attributes.NAME;
+								feature.toolTip = name;
+								var layerID:String = j.toString();
+								var resType:String = feature.attributes.TYPE;
+								var sourceType:String = mark as String;
+								var object:Object = {name:name,type:layertype,layerID:layerID,resType:resType,feature:feature,sourceType:sourceType};
+								var ri:ResultItem = new ResultItem(feature,object);
+								allData.addItem(ri);
+								var geotype:String = feature.geometry.type;
+								switch(geotype) {
+									case Geometry.GEOPOINT: {
+										if(mark=="enterprise@zy_google"){
+											feature.style = pms1;
+										}else if(mark=="pollution@zy_google"){
+											feature.style = pms2;
+										}else if(mark=="company@zy_google"){
+											feature.style = pms3;
+										}
+										feature.addEventListener(MouseEvent.CLICK,featureClick);
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			public function featureClick(event:MouseEvent):void{
+				var featureTemp:Feature = event.currentTarget as Feature;
+				var textArea:TextArea = new TextArea();
+				textArea.setStyle("borderVisible",false);
+				textArea.height = 50;
+				textArea.width = 150;
+				textArea.editable = false;
+				textArea.text= "类型：" + featureTemp.attributes.TYPE + "\n"
+					+"名称：" + featureTemp.attributes.NAME  ;
+				showInfoWindow("提示信息",textArea,featureTemp.geometry.center,true);
+			}
+			
+			public function initGroupLayer():void{
+				for(var i:int=0;i<arr.length;i++){
+					var layerStr:String = arr[i] as String;
+					var arrTemp:Array = layerStr.split(":");
+					var layerID:String = arrTemp[0] as String;
+					var layerLabel:String = arrTemp[1] as String;
+					var cb:CheckBox = new CheckBox();
+					cb.label = layerLabel;
+					cb.id = layerID;
+					cb.selected = true;
+					checkArr.addItem(cb);
+					cb.addEventListener(Event.CHANGE,onCheckChange);
+					groupLayer.addElement(cb);
+				}
+			}
+			
+			private function onCheckChange(event:Event):void{
+				var cb:CheckBox = event.target as CheckBox;
+				var dataSetName:String = cb.id;
+				for(var i:int=0;i<allData.length;i++){
+					var ri:ResultItem = allData.getItemAt(i) as ResultItem;
+					var temp:String = ri.attributes.sourceType;
+					if(temp==dataSetName){
+						ri.graphic.visible = cb.selected;
+					}
+				}
+			}
+			
+			public function showInfoWindow(label:String,content:UIComponent,point:Point2D,showCloseBtn:Boolean = true):void{
+				map.infoWindow.label = label;
+				map.infoWindow.content =content;
+				map.infoWindow.closeButtonVisible = showCloseBtn;
+				map.infoWindow.show(point);
+			}
+			
+			public function transferLayer(labelName:String):String {
+				var retStr:String;
+				if(labelName.indexOf("enterprise")!=-1){
+					retStr="重点企业";
+				}else if(labelName.indexOf("pollution")!=-1){
+					retStr="重污染源";
+				}else if(labelName.indexOf("company")!=-1){
+					retStr="事业单位"
+				}else if(labelName.indexOf("bjborder")!=-1){
+					retStr = "行政周边";
+				}
+				return retStr;
+			}
+			
+			public function closeWindow(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup left="5" top="5" width="100%" height="100%" right="5" horizontalAlign="center" gap="10">
+		<s:VGroup id="groupLayer" width="90%" height="100%" horizontalAlign="left">
+		</s:VGroup>
+	</s:VGroup>
+</s:TitleWindow>

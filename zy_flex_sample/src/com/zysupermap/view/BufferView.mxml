@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="缓冲区分析" creationComplete="init()" close="closeWindow(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="250" height="400" dropShadowVisible="false" xmlns:graphicStyles="com.supermap.web.core.styles.graphicStyles.*" xmlns:view="com.zysupermap.view.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<graphicStyles:GraphicLineStyle id="sls" color="#5985D4" />
+		<graphicStyles:GraphicFillStyle id="gf" color="#5985D4"  symbol="SYMBOL_SOLID" border="{sls}" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.actions.DrawLine;
+			import com.supermap.web.actions.DrawPoint;
+			import com.supermap.web.actions.DrawPolygon;
+			import com.supermap.web.actions.MapAction;
+			import com.supermap.web.actions.Pan;
+			import com.supermap.web.core.Feature;
+			import com.supermap.web.core.Point2D;
+			import com.supermap.web.core.Rectangle2D;
+			import com.supermap.web.core.geometry.GeoLine;
+			import com.supermap.web.core.geometry.GeoPoint;
+			import com.supermap.web.core.geometry.GeoRegion;
+			import com.supermap.web.core.geometry.Geometry;
+			import com.supermap.web.core.styles.PictureMarkerStyle;
+			import com.supermap.web.events.DrawEvent;
+			import com.supermap.web.iServerJava6R.FilterParameter;
+			import com.supermap.web.iServerJava6R.Recordset;
+			import com.supermap.web.iServerJava6R.dataServices.GetFeaturesByGeometryParameters;
+			import com.supermap.web.iServerJava6R.dataServices.GetFeaturesByGeometryService;
+			import com.supermap.web.iServerJava6R.dataServices.GetFeaturesResult;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLParameters;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLService;
+			import com.supermap.web.iServerJava6R.queryServices.QueryResult;
+			import com.supermap.web.iServerJava6R.queryServices.SpatialQueryMode;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.BufferDistance;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.BufferEndType;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.BufferSetting;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.GeometryBufferAnalystParameters;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.GeometryBufferAnalystResult;
+			import com.supermap.web.iServerJava6R.spatialAnalystServices.GeometryBufferAnalystService;
+			import com.supermap.web.mapping.FeaturesLayer;
+			import com.supermap.web.mapping.Map;
+			import com.zysupermap.event.AppEvent;
+			import com.zysupermap.renderer.ResultItem;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			
+			import spark.components.CheckBox;
+			import spark.components.TextArea;
+			import spark.components.supportClasses.ItemRenderer;
+			
+			public var map:Map;
+			public var gisBufferFeatureLayer:FeaturesLayer;
+			public var geometryBufferUrl:String;
+			[Bindable]
+			private var searchLayers:Array;
+			private var drawPoint:DrawPoint;
+			private var drawLine:DrawLine;
+			private var drawPolygon:DrawPolygon;
+			private var lastFeature:Feature;
+			[Bindable]
+			private var searchResultArray:ArrayCollection = new ArrayCollection();
+			public var checkArr:ArrayCollection = new ArrayCollection();
+			public var mapFeatureURL:String = "";
+			//初始化方法
+			public function init():void{
+				drawPoint = new DrawPoint(map);
+				drawPoint.addEventListener(DrawEvent.DRAW_END,addFeature);
+				drawLine = new DrawLine(map);
+				drawLine.addEventListener(DrawEvent.DRAW_END,addFeature);
+				drawPolygon = new DrawPolygon(map);
+				drawPolygon.addEventListener(DrawEvent.DRAW_END,addFeature);
+				
+				var arr:Array =["enterprise@zy_google:重点企业","pollution@zy_google:重污染源","company@zy_google:事业单位"];
+				for(var i:int=0;i<arr.length;i++){
+					var layerStr:String = arr[i] as String;
+					var arrTemp:Array = layerStr.split(":");
+					var layerID:String = arrTemp[0] as String;
+					var layerLabel:String = arrTemp[1] as String;
+					var cb:CheckBox = new CheckBox();
+					cb.label = layerLabel;
+					cb.id = layerID;
+					checkArr.addItem(cb);
+					var hg:HGroup;
+					if(i%3==0){
+						hg = new HGroup();
+						hg.gap = 10;
+						hg.percentWidth = 100;
+						groupLayer.addElement(hg);
+					}
+					hg.addElement(cb);
+				}
+				
+			}
+			
+			//矢量要素绘制完毕事件 DrawEvent.DRAW_END 的侦听函数
+			private function addFeature(event:DrawEvent):void{
+				gisBufferFeatureLayer.clear();
+				lastFeature = event.feature;
+				gisBufferFeatureLayer.addFeature(event.feature);
+			}
+			
+			public function closeWindow(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			//开始分析事件
+			public function startAnalyse(event:Event):void{
+				gisBufferFeatureLayer.clear();
+				searchResultArray.removeAll();
+				if(null==lastFeature){
+					Alert.show("请绘制地图要分析的地图要素！","系统提示");
+				}else{
+					buffer(lastFeature.geometry,rValue.text);
+				}
+			}
+			
+			private function buffer(geom:Geometry,radius:String):void {
+				//缓冲距离
+				var bufferDistance:BufferDistance = new BufferDistance();
+				var dis:Number = (Number)(radius);
+				bufferDistance.value = dis;
+				//定义缓冲区分析通用参数
+				var bufferSetting:BufferSetting = new BufferSetting();
+				bufferSetting.leftDistance = bufferDistance;
+				bufferSetting.rightDistance = bufferDistance;
+				bufferSetting.endType = BufferEndType.ROUND; 
+				bufferSetting.semicircleLineSegment = 12;
+				
+				var gbap:GeometryBufferAnalystParameters = new GeometryBufferAnalystParameters();
+				gbap.bufferSetting = bufferSetting;
+				gbap.sourceGeometry = geom;
+				var geometryBufferService:GeometryBufferAnalystService = new GeometryBufferAnalystService(geometryBufferUrl);
+				geometryBufferService.processAsync(gbap,new AsyncResponder(processCompleted, excuteErros, null));
+				
+			}
+			
+			//分析失败时调用的处理函数
+			private function excuteErros(object:Object, mark:Object = null):void{
+				Alert.show("生成缓冲区失败！","系统提示");
+			}
+			
+			//分析成功时调用的处理函数
+			private function processCompleted(result:GeometryBufferAnalystResult, mark:Object = null):void
+			{
+				var geo:Geometry = result.resultGeometry;
+				if(geo!=null) {
+					var feature:Feature = new Feature();
+					feature.geometry = geo;
+					feature.style = gf;
+					gisBufferFeatureLayer.addFeature(feature);
+					getFeatureByGeo(feature);
+				}
+			}
+			
+			private function getLayersID():Array{
+				var arrayRtn:Array = new Array();
+				for(var i:int=0;i<checkArr.length;i++){
+					var cb:CheckBox = checkArr[i] as CheckBox;
+					if(cb.selected){
+						var nameall:String = cb.id;
+						var namearr:Array = nameall.split("@");
+						arrayRtn.push(namearr[1]+":"+namearr[0]);
+					}
+				}
+				return arrayRtn;
+			}
+			
+			private function getFeatureByGeo(feature:Feature):void {
+				var queryParams:Array = getLayersID();
+				var queryByGeometryParameters:GetFeaturesByGeometryParameters = new GetFeaturesByGeometryParameters();
+				queryByGeometryParameters.datasetNames = queryParams;
+				queryByGeometryParameters.geometry = feature.geometry;
+				queryByGeometryParameters.spatialQueryMode = SpatialQueryMode.INTERSECT;
+				queryByGeometryParameters.fromIndex = 0;
+				queryByGeometryParameters.toIndex = -1;
+				
+				var geoSelService:GetFeaturesByGeometryService = new GetFeaturesByGeometryService(mapFeatureURL);
+				geoSelService.processAsync(queryByGeometryParameters, new AsyncResponder(this.dispalyQueryRecords, excuteErros1,queryParams) );
+			}
+			
+			private function excuteErros1(object:Object, mark:Object = null):void
+			{
+				Alert.show("查询要素失败！"+object.toString(),"系统提示");
+			}
+			
+			private function dispalyQueryRecords(result:GetFeaturesResult, mark:Object):void{
+				var arr:Array = mark as Array;
+				var ct:Number = 0;
+				var index:Number=0;
+				var features:Array = result.features;	
+				var gtype:String="";
+				if(features.length == 0)
+				{
+					Alert.show("查询结果为空", "提示", 4, this);
+					return; 
+				}else{
+					for each(var feature:Feature in result.features)
+					{
+						var name:String = feature.attributes.NAME;
+						feature.toolTip = name;
+						var layerID:String = name;
+						var resType:String = feature.attributes.TYPE;
+						var sourceType:String = "Resource";
+						var object:Object = {name:name,type:resType,layerID:layerID,resType:resType,feature:feature,sourceType:sourceType};
+						var ri:ResultItem = new ResultItem(feature,object);
+						searchResultArray.addItem(ri);
+						//符号化根据图层的layerID来设置
+						feature.toolTip = name;
+						var picpath:String = "images/searchresources_default.png";
+						var pic:PictureMarkerStyle = new PictureMarkerStyle(picpath);
+						feature.style = pic;
+						gisBufferFeatureLayer.addFeature(feature);
+					}
+				}
+				map.action = new Pan(map);
+			}
+			
+			public function transferLayer(labelName:String):String {
+				var retStr:String;
+				if(labelName.indexOf("enterprise")!=-1){
+					retStr="重点企业";
+				}else if(labelName.indexOf("pollution")!=-1){
+					retStr="重污染源";
+				}else if(labelName.indexOf("company")!=-1){
+					retStr="事业单位"
+				}else if(labelName.indexOf("bjborder")!=-1){
+					retStr = "行政周边";
+				}
+				return retStr;
+			}
+			
+			//按钮点击事件
+			private function addPointClick(event:MouseEvent):void
+			{
+				gisBufferFeatureLayer.clear();
+				map.action = drawPoint;
+				setImageColor(imagePoint,true);
+				setImageColor(imageLine,false);
+				setImageColor(imagePoly,false);
+			}
+			protected function addLineClick(event:MouseEvent):void
+			{
+				gisBufferFeatureLayer.clear();
+				map.action = drawLine;
+				setImageColor(imagePoint,false);
+				setImageColor(imageLine,true);
+				setImageColor(imagePoly,false);
+			}
+			private function addPolygonClick(event:MouseEvent):void
+			{
+				gisBufferFeatureLayer.clear();
+				map.action = drawPolygon;
+				setImageColor(imagePoint,false);
+				setImageColor(imageLine,false);
+				setImageColor(imagePoly,true);
+			}
+			
+			public function setImageColor(image:Image,boo:Boolean):void{
+				var imageId:String = image.id;
+				if(imageId.indexOf('Line')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_draw_line_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_draw_line.png";
+					}				
+				}else if(imageId.indexOf('Point')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_draw_point_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_draw_point.png";
+					}	
+				}else if(imageId.indexOf('Poly')!=-1){
+					if(boo){
+						image.source = "com/zysupermap/images/i_draw_poly_y.png";
+					}else{
+						image.source = "com/zysupermap/images/i_draw_poly.png";
+					}	
+				}
+			}
+			
+			private function clearResult():void{
+				gisBufferFeatureLayer.clear();
+				searchResultArray.removeAll();
+				map.action = new Pan(map);
+			}
+			
+			protected function showMessageHandler(event:AppEvent):void{
+				var stype:String = event.data.attributes.type;
+				var name:String = event.data.attributes.name;
+				Alert.show(stype+name);
+			}
+			
+			public function zoomZoomTo(point:GeoPoint):void{
+				map.zoomToScale(map.scale,new Point2D(point.x,point.y));
+			}
+			private var hitimer:uint;
+			protected function showPositionHandler(event:AppEvent):void{
+				var queryResult:ResultItem = ItemRenderer(event.target).data as ResultItem;
+				if (queryResult.geometry)
+				{
+					zoomZoomTo(queryResult.center);
+				}
+				clearTimeout(hitimer);
+				hitimer = setTimeout(showHighlight, 300, [ queryResult ]);
+			}
+			
+			public function showInfoWindow(label:String,content:UIComponent,point:Point2D,showCloseBtn:Boolean = false):void{
+				map.infoWindow.label = label;
+				map.infoWindow.content =content;
+				map.infoWindow.closeButtonVisible = showCloseBtn;
+				map.infoWindow.show(point);
+			}
+			
+			private function showHighlight(params:Array):void
+			{
+				var queryResult:ResultItem = params[0];
+				var showHighlightPoint:GeoPoint = queryResult.center as GeoPoint;
+				var textArea:TextArea = new TextArea();
+				textArea.setStyle("borderVisible",false);
+				textArea.height = 50;
+				textArea.width = 150;
+				textArea.editable = false;
+				textArea.text= "类型：" + queryResult.attributes.type + "\n"
+					+"名称：" + queryResult.attributes.name  ;
+				showInfoWindow("提示信息",textArea,new Point2D(showHighlightPoint.x,showHighlightPoint.y),false);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" verticalAlign="middle" gap="20">
+			<s:Image id="imagePoint" source="com/zysupermap/images/i_draw_point.png" toolTip="点" buttonMode="true" click="addPointClick(event)" />
+			<s:Image id="imageLine" source="com/zysupermap/images/i_draw_line.png" toolTip="线" buttonMode="true" click="addLineClick(event)" />
+			<s:Image id="imagePoly" source="com/zysupermap/images/i_draw_poly.png" toolTip="面" buttonMode="true" click="addPolygonClick(event)" />
+		</s:HGroup>
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label text="缓冲半径：" />
+			<s:TextInput id="rValue" width="80" />
+			<s:Label text="米(m)" />
+		</s:HGroup>
+		<s:Label text="图层类别：" width="100%" textAlign="left" />
+		<s:VGroup id="groupLayer" width="90%"  horizontalAlign="center">
+		</s:VGroup>
+		<s:Scroller width="100%" height="100%"  bottom="5">
+			<view:QueryResultDataGroup dataProvider="{searchResultArray}" showMessage="showMessageHandler(event)" showPosition="showPositionHandler(event)"
+										  width="100%">
+				<view:layout>
+					<s:VerticalLayout gap="2" horizontalAlign="justify" useVirtualLayout="true"/>
+				</view:layout>
+			</view:QueryResultDataGroup>
+		</s:Scroller>
+		<s:HGroup width="100%" horizontalAlign="center"  verticalAlign="bottom" gap="20">
+			<s:Button label="分析" id="btstart" toolTip="点击分析" click="startAnalyse(event)"  />
+			<s:Button label="清空地图" toolTip="点击清空" click="clearResult()"  />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

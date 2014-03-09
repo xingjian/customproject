@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="空间查询" creationComplete="init()" close="closeWindow(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="250" height="300" xmlns:view="com.zysupermap.view.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.core.Feature;
+			import com.supermap.web.core.Point2D;
+			import com.supermap.web.core.Rectangle2D;
+			import com.supermap.web.core.geometry.GeoLine;
+			import com.supermap.web.core.geometry.GeoPoint;
+			import com.supermap.web.core.geometry.GeoRegion;
+			import com.supermap.web.core.geometry.Geometry;
+			import com.supermap.web.core.styles.PictureMarkerStyle;
+			import com.supermap.web.iServerJava6R.FilterParameter;
+			import com.supermap.web.iServerJava6R.Recordset;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLParameters;
+			import com.supermap.web.iServerJava6R.queryServices.QueryBySQLService;
+			import com.supermap.web.iServerJava6R.queryServices.QueryResult;
+			import com.supermap.web.mapping.FeaturesLayer;
+			import com.supermap.web.mapping.Map;
+			import com.zysupermap.event.AppEvent;
+			import com.zysupermap.renderer.ResultItem;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.events.FaultEvent;
+			
+			import spark.components.CheckBox;
+			import spark.components.TextArea;
+			import spark.components.supportClasses.ItemRenderer;
+			
+			public var checkArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var searchLayers:Array;
+			public var map:Map;
+			public var mapUrl:String;
+			public var gisSearchFeatureLayer:FeaturesLayer;
+			[Bindable]
+			private var searchResultArray:ArrayCollection = new ArrayCollection();
+			//初始化方法
+			public function init():void{
+				var arr:Array =["enterprise@zy_google:重点企业","pollution@zy_google:重污染源","company@zy_google:事业单位"];
+				for(var i:int=0;i<arr.length;i++){
+					var layerStr:String = arr[i] as String;
+					var arrTemp:Array = layerStr.split(":");
+					var layerID:String = arrTemp[0] as String;
+					var layerLabel:String = arrTemp[1] as String;
+					var cb:CheckBox = new CheckBox();
+					cb.label = layerLabel;
+					cb.id = layerID;
+					checkArr.addItem(cb);
+					var hg:HGroup;
+					if(i%3==0){
+						hg = new HGroup();
+						hg.gap = 10;
+						hg.percentWidth = 100;
+						groupLayer.addElement(hg);
+					}
+					hg.addElement(cb);
+				}
+			}
+			
+			public function ShowSelectItems():void{
+				gisSearchFeatureLayer.clear();
+				searchResultArray.removeAll();
+				if(resourceName.text==null||resourceName.text==""){
+					Alert.show("请输入名称！","系统提示");
+				}else{
+					searchLayers = getLayersID();
+					if(searchLayers==null||searchLayers.length==0){
+						Alert.show("请选择图层类别！","系统提示");
+					}else{
+						for(var i:int=0;i<searchLayers.length;i++) {
+							var datasetName:String = searchLayers[i];
+							gisQueryRes(datasetName);
+						}
+					}
+				}
+			}
+			
+			public function transferLayer(labelName:String):String {
+				var retStr:String;
+				if(labelName.indexOf("enterprise")!=-1){
+					retStr="重点企业";
+				}else if(labelName.indexOf("pollution")!=-1){
+					retStr="重污染源";
+				}else if(labelName.indexOf("company")!=-1){
+					retStr="事业单位"
+				}else if(labelName.indexOf("bjborder")!=-1){
+					retStr = "行政周边";
+				}
+				return retStr;
+			}
+			
+			private function searchResultHandle(queryResult:QueryResult, mark:Object = null):void{
+				var ids:Array = [];
+				var features:Array = [];
+				var recordSets:Array = queryResult.recordsets;
+				if(recordSets.length>0){
+					for(var i:int=0;i<recordSets.length;i++){
+						var recordSet:Recordset=recordSets[i];
+						var type:String = recordSet.datasetName;
+						var layertype:String = transferLayer(type);
+						if(recordSet.features!=null&&recordSet.features.length>0) {
+							for(var j:int=0;j<recordSet.features.length;j++){
+								var feature:Feature=recordSet.features[j];
+								var name:String = feature.attributes.NAME;
+								feature.toolTip = name;
+								var layerID:String = j.toString();
+								var resType:String = feature.attributes.TYPE;
+								var sourceType:String = "Resource";
+								var object:Object = {name:name,type:layertype,layerID:layerID,resType:resType,feature:feature,sourceType:sourceType};
+								var ri:ResultItem = new ResultItem(feature,object);
+								searchResultArray.addItem(ri);
+								var geotype:String = feature.geometry.type;
+								switch(geotype) {
+									case Geometry.GEOPOINT: {
+										var picpath:String = "com/zysupermap/images/searchresources_default.png";
+										var pic:PictureMarkerStyle = new PictureMarkerStyle(picpath);
+										feature.style = pic;
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}
+									case Geometry.GEOLINE: {
+										var picpath1:String = "icom/zysupermap/images/searchresources_default.png";
+										var pic1:PictureMarkerStyle = new PictureMarkerStyle(picpath1);
+										var geoLine:GeoLine=feature.geometry as GeoLine;
+										var rect:Rectangle2D=geoLine.bounds;
+										var point2d:Point2D=rect.center;
+										var geoPoint:GeoPoint=new GeoPoint(point2d.x,point2d.y);
+										feature.geometry=geoPoint;
+										feature.style = pic1;
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}
+									case Geometry.GEOREGION: {
+										var picpath2:String = "images/searchresources_default.png";
+										var pic2:PictureMarkerStyle = new PictureMarkerStyle(picpath2);
+										var geoRegion:GeoRegion=feature.geometry as GeoRegion;
+										var rect1:Rectangle2D=geoRegion.bounds;
+										var point2d1:Point2D=rect1.center;
+										var geoPoint1:GeoPoint=new GeoPoint(point2d1.x,point2d1.y);
+										feature.geometry=geoPoint1;
+										feature.style = pic2;
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}
+								}
+							}
+						}
+					}
+					this.currentState = "result";
+				}
+			}
+			
+			private function gisQueryRes(datasetName:String):void {
+				var queryBySQLParam:QueryBySQLParameters = new QueryBySQLParameters();
+				var filter:FilterParameter = new FilterParameter();
+				filter.name =datasetName;
+				filter.attributeFilter = "name like '%"+resourceName.text+"%'";
+				queryBySQLParam.filterParameters = [filter];
+				queryBySQLParam.returnContent = true;
+				var queryByDistanceService:QueryBySQLService = new QueryBySQLService(mapUrl);
+				queryByDistanceService.processAsync(queryBySQLParam, new AsyncResponder(this.searchResultHandle,excuteErrors, null));
+			}
+			
+			private function excuteErrors(error:FaultEvent,mark:Object):void{
+				Alert.show("数据查询异常,请确认在数据服务已经发布!","系统提示");
+			}
+			
+			private function getLayersID():Array{
+				var arrayRtn:Array = new Array();
+				for(var i:int=0;i<checkArr.length;i++){
+					var cb:CheckBox = checkArr[i] as CheckBox;
+					if(cb.selected){
+						arrayRtn.push(cb.id);
+					}
+				}
+				return arrayRtn;
+			}
+			
+			private function mouseOverQueryResult(event:Event):void
+			{
+			}
+			
+			private var hitimer:uint;
+			private function mouseOutQueryResult(event:Event):void
+			{
+				clearTimeout(hitimer);
+				map.infoWindow.hide();
+			}
+			
+			public function zoomZoomTo(point:GeoPoint):void{
+				map.zoomToScale(map.scale,new Point2D(point.x,point.y));
+			}
+			
+			private function clickQueryResult(event:Event):void
+			{
+				var queryResult:ResultItem = ItemRenderer(event.target).data as ResultItem;
+				if (queryResult.geometry)
+				{
+					zoomZoomTo(queryResult.center);
+				}
+				clearTimeout(hitimer);
+				hitimer = setTimeout(showHighlight, 300, [ queryResult ]);
+			}
+			
+			private function showHighlight(params:Array):void
+			{
+				var queryResult:ResultItem = params[0];
+				var showHighlightPoint:GeoPoint = queryResult.center as GeoPoint;
+				var textArea:TextArea = new TextArea();
+				textArea.setStyle("borderVisible",false);
+				textArea.height = 50;
+				textArea.width = 150;
+				textArea.editable = false;
+				textArea.text= "类型：" + queryResult.attributes.type + "\n"
+					+"名称：" + queryResult.attributes.name  ;
+				showInfoWindow("提示信息",textArea,new Point2D(showHighlightPoint.x,showHighlightPoint.y),false);
+			}
+			
+			public function showInfoWindow(label:String,content:UIComponent,point:Point2D,showCloseBtn:Boolean = false):void{
+				map.infoWindow.label = label;
+				map.infoWindow.content =content;
+				map.infoWindow.closeButtonVisible = showCloseBtn;
+				map.infoWindow.show(point);
+			}
+			
+			protected function returnBtn_clickHandler(event:MouseEvent):void
+			{
+				this.currentState = "search";
+			}
+			
+			
+			protected function showMessageHandler(event:AppEvent):void{
+				var stype:String = event.data.attributes.type;
+				Alert.show(stype);
+			}
+			
+			
+			protected function showPositionHandler(event:AppEvent):void{
+				var queryResult:ResultItem = ItemRenderer(event.target).data as ResultItem;
+				if (queryResult.geometry)
+				{
+					zoomZoomTo(queryResult.center);
+				}
+				clearTimeout(hitimer);
+				hitimer = setTimeout(showHighlight, 300, [ queryResult ]);
+			}
+			
+			private function showResult():void{
+				this.currentState = "result";
+			}
+			
+			private function clearResult():void{
+				gisSearchFeatureLayer.clear();
+				searchResultArray.removeAll();
+				map.infoWindow.hide();
+			}
+			
+			public function closeWindow(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="search" />
+		<s:State name="result" />
+	</s:states>
+	<s:VGroup left="5" top="5" width="100%" height="100%" right="5" horizontalAlign="center" gap="10" includeIn="search">
+		<s:HGroup width="100%" verticalAlign="middle">
+			<s:Label text="名称：" />
+			<s:TextInput width="100%" id="resourceName"  enter="ShowSelectItems()" />
+		</s:HGroup>
+		<s:Label text="图层类别：" width="100%" textAlign="left" />
+		<s:VGroup id="groupLayer" width="90%" height="100%" horizontalAlign="center">
+		</s:VGroup>
+		<s:HGroup width="100%" horizontalAlign="center"  height="100%" verticalAlign="bottom" gap="10">
+			<s:Button label="查询" toolTip="点击查询" click="ShowSelectItems()"  />
+			<s:Button label="结果" visible="false" toolTip="点击查看结果" click="showResult()"  />
+			<s:Button label="清空地图" toolTip="点击清空" click="clearResult()"  />
+		</s:HGroup>
+	</s:VGroup>
+	<s:VGroup left="5" top="5" width="100%" height="100%" right="5" includeIn="result">
+		
+		<s:Scroller width="100%" y="35" bottom="5" height="100%">
+			<view:QueryResultDataGroup dataProvider="{searchResultArray}" showMessage="showMessageHandler(event)" showPosition="showPositionHandler(event)"
+										  width="100%" >
+				<view:layout>
+					<s:VerticalLayout gap="2"  horizontalAlign="justify"  useVirtualLayout="true"/>
+				</view:layout>
+			</view:QueryResultDataGroup>
+		</s:Scroller>
+		<s:HGroup width="100%" height="30" verticalAlign="middle">
+			<s:Label x="5" text="{'共计'+searchResultArray.length+'条记录！'}" verticalAlign="middle"   color="#FF0000" />
+			<s:Spacer width="100%" />
+			<mx:LinkButton label="返回查询" textDecoration="underline" fontFamily="微软雅黑"  id="returnBtn" color="#0000ff" click="returnBtn_clickHandler(event)" />
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

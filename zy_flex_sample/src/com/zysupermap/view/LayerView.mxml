@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="图层管理" creationComplete="init()" close="closeWindow(event)"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100" height="200">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.supermap.web.iServerJava6R.layerServices.GetLayersInfoResult;
+			import com.supermap.web.iServerJava6R.layerServices.GetLayersInfoService;
+			import com.supermap.web.iServerJava6R.layerServices.LayerStatus;
+			import com.supermap.web.iServerJava6R.layerServices.ServerLayer;
+			import com.supermap.web.iServerJava6R.layerServices.SetLayerResult;
+			import com.supermap.web.iServerJava6R.layerServices.SetLayerStatusParameters;
+			import com.supermap.web.iServerJava6R.layerServices.SetLayerStatusService;
+			import com.supermap.web.mapping.Map;
+			import com.supermap.web.mapping.TiledDynamicRESTLayer;
+			
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			
+			import spark.components.CheckBox;
+
+			
+			public var map:Map;
+			public var mapURL:String;
+			private var checkBoxes:Array = new Array();
+			private var sourceID:String;
+			public var layer:TiledDynamicRESTLayer;
+			//初始化方法
+			public function init():void{
+				getLayersInfo();
+			}
+			
+			public function closeWindow(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function getLayersInfo():void{
+				var getLayersInfoService:GetLayersInfoService=new GetLayersInfoService(mapURL);
+				getLayersInfoService.processAsync(new AsyncResponder(this.getLayerInfoComplete,this.excuteErros_Get,"getLayerInfo"));
+			}
+			
+			private function excuteErros_Get(object:Object, mark:Object):void
+			{
+				if(mark == "setStatus"){
+					Alert.show("子图层显示控制失败", null, 4, this);
+				}else if(mark == "getLayerInfo"){
+					Alert.show("图层信息获取失败！", null, 4, this);
+				}
+			}
+			
+			private function getLayerInfoComplete(result:GetLayersInfoResult,object:Object=null):void{
+				if(result.layersInfo.length>0){
+					this.creatCheckbox(result);
+				}
+			}
+			
+			private function creatCheckbox(result:GetLayersInfoResult):void{
+				this.subLayerBox.removeAllElements();
+				for each(var layer:ServerLayer in result.layersInfo)
+				{
+					if(layer.name.indexOf("@")!=-1){
+						var checkBox:CheckBox = new CheckBox();
+						checkBox.label =layerNameCN(layer.name);
+						checkBox.name=layer.name;
+						checkBox.selected=layer.isVisible;
+						checkBox.addEventListener(Event.CHANGE,onCheckChange);
+						this.checkBoxes.push(checkBox);
+						subLayerBox.addElement(checkBox);
+						}
+					}
+			}
+			
+			private function onCheckChange(event:Event):void{
+				var changeIndex:int = this.checkBoxes.indexOf(event.target);
+				(this.checkBoxes[changeIndex] as CheckBox).selected = event.target.selected;
+				var layerList:Array = new Array();
+				for each(var checkBox:CheckBox in this.checkBoxes){
+					var layerStatus:LayerStatus = new LayerStatus();
+					layerStatus.isVisible=checkBox.selected;
+					layerStatus.layerName = checkBox.name;
+					layerList.push(layerStatus);
+				}
+				this.setUserLayer(layerList);
+			}
+			
+			private function setUserLayer(layerList:Array):void{
+				var setLayerStatusParameters:SetLayerStatusParameters = new SetLayerStatusParameters();
+				setLayerStatusParameters.layerStatusList = layerList;
+				setLayerStatusParameters.resourceID = this.sourceID;
+				setLayerStatusParameters.holdTime = 100;
+				var setLayerStatusService:SetLayerStatusService = new SetLayerStatusService(mapURL);
+				setLayerStatusService.processAsync(setLayerStatusParameters, new AsyncResponder(this.processCompleted, this.excuteErros_Get, "setStatus"));
+			}	
+			
+			private function processCompleted(result:SetLayerResult, mark:Object):void{
+				if(result.newResourceID){
+					layer.layersID = result.newResourceID;
+					this.sourceID = result.newResourceID;
+					map.refresh();
+				}
+			} 
+			
+			public function layerNameCN(labelName:String):String{
+				var retStr:String = "其它";
+				if(labelName.indexOf("enterprise")!=-1){
+					retStr="重点企业";
+				}else if(labelName.indexOf("pollution")!=-1){
+					retStr="重污染源";
+				}else if(labelName.indexOf("company")!=-1){
+					retStr="事业单位"
+				}else if(labelName.indexOf("bjborder")!=-1){
+					retStr = "行政周边";
+				}
+				return retStr;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" id="subLayerBox" horizontalAlign="center">
+		
+	</s:VGroup>
+</s:TitleWindow>
