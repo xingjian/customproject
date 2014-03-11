@@ -88,6 +88,7 @@
 				}else if(uriStr=="hcqfx"){
 					if(null==bufferView){
 						bufferView = new BufferView();
+						bufferView.resultFeatureLayer = graphicsLayer;
 						bufferView.gisBufferFeatureLayer = baseLayer;
 						bufferView.map = map;
 						bufferView.mapFeatureURL = mapFeatureURL;
@@ -123,7 +124,7 @@
 					if(null==ztuView){
 						ztuView = new ZTUView();
 						ztuView.map = map;
-						ztuView.gisSearchFeatureLayer = baseLayer;
+						ztuView.gisSearchFeatureLayer = graphicsLayer;
 						ztuView.mapUrl = mapURL;
 					}
 					PopUpManager.addPopUp(ztuView,this,false);
@@ -157,6 +158,11 @@
 					gMapSate.visible = true;
 					gMapAnno.visible = true;
 					gMapTerr.visible = false;
+				}else if(type=="closemap"){
+					gMap.visible = false;
+					gMapSate.visible = false;
+					gMapAnno.visible = false;
+					gMapTerr.visible = false;
 				}
 			}
 			
@@ -178,6 +184,7 @@
 			<view:CompassCustom id="compass" map="{map}" left="10" top="10"/>
 			<supermap:ZoomSlider map="{map}" x="30" y="84"/>
 			<supermap:ScaleBar map="{map}" bottom="30" left="20"/>
+			<s:Button label="关闭网络地图" top="7" right="260" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('closemap')" />
 			<s:Button label="矢量图" top="7" right="175" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('map')" />
 			<s:Button label="影像图" top="7" right="90" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('satellite')" />
 			<s:Button label="地形图" top="7" right="5" fontFamily="微软雅黑" fontWeight="bold" click="layerBtnClick('terrain')" />

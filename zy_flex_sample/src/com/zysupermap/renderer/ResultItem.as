@@ -1,6 +1,8 @@
 package com.zysupermap.renderer
 {
 	import com.supermap.web.core.Feature;
+	import com.supermap.web.core.Point2D;
+	import com.supermap.web.core.Rectangle2D;
 	import com.supermap.web.core.geometry.GeoLine;
 	import com.supermap.web.core.geometry.GeoPoint;
 	import com.supermap.web.core.geometry.GeoRegion;
@@ -85,6 +87,22 @@ public class ResultItem
                     point = geometry as GeoPoint;
                     break;
                 }
+				case Geometry.GEOLINE:
+				{
+					var geoLine:GeoLine= geometry as GeoLine;
+					var rect:Rectangle2D=geoLine.bounds;
+					var point2d:Point2D=rect.center;
+					point=new GeoPoint(point2d.x,point2d.y);
+					break;
+				}
+				case Geometry.GEOREGION:
+				{
+					var geoRegion:GeoRegion=geometry as GeoRegion;
+					var rect1:Rectangle2D=geoRegion.bounds;
+					var point2d1:Point2D=rect1.center;
+					point=new GeoPoint(point2d1.x,point2d1.y);
+					break;
+				}	
             }
         }
 

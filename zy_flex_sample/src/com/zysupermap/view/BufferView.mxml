@@ -45,6 +45,8 @@
 			
 			import mx.collections.ArrayCollection;
 			import mx.controls.Alert;
+			import mx.controls.LinkButton;
+			import mx.core.FlexGlobals;
 			import mx.core.UIComponent;
 			import mx.managers.PopUpManager;
 			import mx.rpc.AsyncResponder;
@@ -55,6 +57,7 @@
 			
 			public var map:Map;
 			public var gisBufferFeatureLayer:FeaturesLayer;
+			public var resultFeatureLayer:FeaturesLayer;
 			public var geometryBufferUrl:String;
 			[Bindable]
 			private var searchLayers:Array;
@@ -75,7 +78,13 @@
 				drawPolygon = new DrawPolygon(map);
 				drawPolygon.addEventListener(DrawEvent.DRAW_END,addFeature);
 				
-				var arr:Array =["enterprise@zy_google:重点企业","pollution@zy_google:重污染源","company@zy_google:事业单位"];
+				var arr:Array =["enterprise@zy_google:危化","linye@zy_google:林业",
+					"mingzheng@zy_google:民政","hospital@zy_google:医院",
+					"education@zy_google:教育","wenti@zy_google:文体",
+					"yaojian@zy_google:药监","shangwu@zy_google:商务",
+					"pipeline@zy_google:管道","nongshui@zy_google:农水",
+					"shequ@zy_google:社区","jiedao@zy_google:街道",
+					"huagongyuanqu@zy_google:化工园区","shizadian@zy_google:食杂店"];
 				for(var i:int=0;i<arr.length;i++){
 					var layerStr:String = arr[i] as String;
 					var arrTemp:Array = layerStr.split(":");
@@ -86,7 +95,7 @@
 					cb.id = layerID;
 					checkArr.addItem(cb);
 					var hg:HGroup;
-					if(i%3==0){
+					if(i%4==0){
 						hg = new HGroup();
 						hg.gap = 10;
 						hg.percentWidth = 100;
@@ -188,6 +197,27 @@
 				Alert.show("查询要素失败！"+object.toString(),"系统提示");
 			}
 			
+			public function featureClick(event:MouseEvent):void{
+				var featureTemp:Feature = event.currentTarget as Feature;
+				showFeature(featureTemp);
+			}
+			
+			private function linkButton2Click(event:Event):void{
+				var url:String="http://www.baidu.com"; 
+				var request:URLRequest=new URLRequest(url); 
+				navigateToURL(request,"_blank"); 
+			}
+			private function linkButton1Click(event:Event):void{
+				var messageView:MessageView = new MessageView();
+				PopUpManager.addPopUp(messageView,FlexGlobals.topLevelApplication as mian,false);
+				PopUpManager.centerPopUp(messageView);
+			}
+			private function linkButton3Click(event:Event):void{
+				var innerView:InnerView = new InnerView();
+				PopUpManager.addPopUp(innerView,FlexGlobals.topLevelApplication as mian,false);
+				PopUpManager.centerPopUp(innerView);
+			}
+			
 			private function dispalyQueryRecords(result:GetFeaturesResult, mark:Object):void{
 				var arr:Array = mark as Array;
 				var ct:Number = 0;
@@ -203,6 +233,7 @@
 					{
 						var name:String = feature.attributes.NAME;
 						feature.toolTip = name;
+						feature.addEventListener(MouseEvent.CLICK,featureClick);
 						var layerID:String = name;
 						var resType:String = feature.attributes.TYPE;
 						var sourceType:String = "Resource";
@@ -211,25 +242,72 @@
 						searchResultArray.addItem(ri);
 						//符号化根据图层的layerID来设置
 						feature.toolTip = name;
-						var picpath:String = "images/searchresources_default.png";
-						var pic:PictureMarkerStyle = new PictureMarkerStyle(picpath);
-						feature.style = pic;
-						gisBufferFeatureLayer.addFeature(feature);
+						var geotype:String = feature.geometry.type;
+						switch(geotype) {
+							case Geometry.GEOPOINT: {
+								var picpath:String = "com/zysupermap/images/searchresources_default.png";
+								var pic:PictureMarkerStyle = new PictureMarkerStyle(picpath);
+								feature.style = pic;
+								resultFeatureLayer.addFeature(feature);
+								break;
+							}
+							case Geometry.GEOLINE: {
+								var picpath1:String = "com/zysupermap/images/searchresources_default.png";
+								var pic1:PictureMarkerStyle = new PictureMarkerStyle(picpath1);
+								var geoLine:GeoLine=feature.geometry as GeoLine;
+								var rect:Rectangle2D=geoLine.bounds;
+								var point2d:Point2D=rect.center;
+								var geoPoint:GeoPoint=new GeoPoint(point2d.x,point2d.y);
+								feature.geometry=geoPoint;
+								feature.style = pic1;
+								resultFeatureLayer.addFeature(feature);
+								break;
+							}
+							case Geometry.GEOREGION: {
+								var picpath2:String = "com/zysupermap/images/searchresources_default.png";
+								var pic2:PictureMarkerStyle = new PictureMarkerStyle(picpath2);
+								var geoRegion:GeoRegion=feature.geometry as GeoRegion;
+								var rect1:Rectangle2D=geoRegion.bounds;
+								var point2d1:Point2D=rect1.center;
+								var geoPoint1:GeoPoint=new GeoPoint(point2d1.x,point2d1.y);
+								feature.geometry=geoPoint1;
+								feature.style = pic2;
+								resultFeatureLayer.addFeature(feature);
+								break;
+							}
 					}
 				}
 				map.action = new Pan(map);
 			}
-			
+			}
 			public function transferLayer(labelName:String):String {
 				var retStr:String;
 				if(labelName.indexOf("enterprise")!=-1){
-					retStr="重点企业";
-				}else if(labelName.indexOf("pollution")!=-1){
-					retStr="重污染源";
-				}else if(labelName.indexOf("company")!=-1){
-					retStr="事业单位"
-				}else if(labelName.indexOf("bjborder")!=-1){
-					retStr = "行政周边";
+					retStr="危化";
+				}else if(labelName.indexOf("linye")!=-1){
+					retStr="林业";
+				}else if(labelName.indexOf("mingzheng")!=-1){
+					retStr="民政"
+				}else if(labelName.indexOf("hospital")!=-1){
+					retStr = "医院";
+				}else if(labelName.indexOf("education")!=-1){
+					retStr = "教育";
+				}else if(labelName.indexOf("yaojian")!=-1){
+					retStr = "药监";
+				}else if(labelName.indexOf("shangwu")!=-1){
+					retStr = "商务";
+				}else if(labelName.indexOf("shizadian")!=-1){
+					retStr = "食杂店";
+				}else if(labelName.indexOf("pipeline")!=-1){
+					retStr = "管道";
+				}else if(labelName.indexOf("nongshui")!=-1){
+					retStr = "农水";
+				}else if(labelName.indexOf("huagongyuanqu")!=-1){
+					retStr = "化工园区";
+				}else if(labelName.indexOf("shequ")!=-1){
+					retStr = "社区";
+				}else if(labelName.indexOf("jiedao")!=-1){
+					retStr = "街道";
 				}
 				return retStr;
 			}
@@ -285,6 +363,7 @@
 			
 			private function clearResult():void{
 				gisBufferFeatureLayer.clear();
+				resultFeatureLayer.clear();
 				searchResultArray.removeAll();
 				map.action = new Pan(map);
 			}
@@ -316,18 +395,48 @@
 				map.infoWindow.show(point);
 			}
 			
-			private function showHighlight(params:Array):void
-			{
-				var queryResult:ResultItem = params[0];
-				var showHighlightPoint:GeoPoint = queryResult.center as GeoPoint;
+			private function showFeature(featureTemp:Feature):void{
+				var hg:VGroup = new VGroup();
+				hg.height = 120;
+				hg.width = 250;
+				var linkButton1:LinkButton = new LinkButton();
+				linkButton1.label = "详细属性信息";
+				var linkButton2:LinkButton = new LinkButton();
+				linkButton2.label = "链接URL";
+				var linkButton3:LinkButton = new LinkButton();
+				linkButton3.label = "内部结构";
+				linkButton1.setStyle("textDecoration","underline");
+				linkButton2.setStyle("textDecoration","underline");
+				linkButton3.setStyle("textDecoration","underline");
+				linkButton1.setStyle("color","#0000ff");
+				linkButton2.setStyle("color","#0000ff");
+				linkButton3.setStyle("color","#0000ff");
+				linkButton1.addEventListener(MouseEvent.CLICK,linkButton1Click);
+				linkButton2.addEventListener(MouseEvent.CLICK,linkButton2Click);
+				linkButton3.addEventListener(MouseEvent.CLICK,linkButton3Click);
+				
 				var textArea:TextArea = new TextArea();
 				textArea.setStyle("borderVisible",false);
 				textArea.height = 50;
-				textArea.width = 150;
+				textArea.percentWidth = 100;
 				textArea.editable = false;
-				textArea.text= "类型：" + queryResult.attributes.type + "\n"
-					+"名称：" + queryResult.attributes.name  ;
-				showInfoWindow("提示信息",textArea,new Point2D(showHighlightPoint.x,showHighlightPoint.y),false);
+				textArea.text= "类型：" + featureTemp.attributes.TYPE + "\n"
+					+"名称：" + featureTemp.attributes.NAME  ;
+				
+				var hg1:HGroup = new HGroup();
+				hg1.addElement(linkButton1);
+				hg1.addElement(linkButton2);
+				hg1.addElement(linkButton3);
+				hg.addElement(textArea);
+				hg.addElement(hg1);
+				showInfoWindow("提示信息",hg,featureTemp.geometry.center,true);
+			}
+			
+			private function showHighlight(params:Array):void
+			{
+				var queryResult:ResultItem = params[0];
+				var featureTemp:Feature = queryResult.graphic;
+				showFeature(featureTemp);
 			}
 			
 		]]>

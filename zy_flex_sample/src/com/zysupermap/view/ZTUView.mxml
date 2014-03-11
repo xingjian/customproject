@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="专题图管理" creationComplete="init()" close="closeWindow(event)"
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" width="120" height="300" xmlns:view="com.zysupermap.view.*" xmlns:supermap="http://www.supermap.com/iclient/2010">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="120" height="400" xmlns:view="com.zysupermap.view.*" xmlns:supermap="http://www.supermap.com/iclient/2010">
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 		<supermap:PictureMarkerStyle id="pms1" source="com/zysupermap/images/ztu1.png" />
 		<supermap:PictureMarkerStyle id="pms2" source="com/zysupermap/images/ztu2.png" />
 		<supermap:PictureMarkerStyle id="pms3" source="com/zysupermap/images/ztu3.png" />
+		<supermap:PictureMarkerStyle id="pms4" source="com/zysupermap/images/ztu4.png" />
+		<supermap:PictureMarkerStyle id="pms5" source="com/zysupermap/images/ztu5.png" />
+		<supermap:PictureMarkerStyle id="pms6" source="com/zysupermap/images/ztu6.png" />
+		<supermap:PictureMarkerStyle id="pms7" source="com/zysupermap/images/ztu7.png" />
+		<supermap:PictureMarkerStyle id="pms8" source="com/zysupermap/images/ztu8.png" />
+		<supermap:PictureMarkerStyle id="pms9" source="com/zysupermap/images/ztu9.png" />
+		<supermap:PictureMarkerStyle id="pms10" source="com/zysupermap/images/hou.swf" />
+		<supermap:PredefinedLineStyle id="pms11"   color="#990033" symbol="{PredefinedLineStyle.SYMBOL_DASHDOT}"  weight="3" />
+		<supermap:PredefinedLineStyle id="pms16"   color="#FF0066"   weight="1" />
+		<supermap:PredefinedFillStyle  id="pms12" border="{pms16}"   color="#0000FF" symbol="{PredefinedFillStyle.SYMBOL_CROSS}"  />
+		<supermap:PredefinedFillStyle id="pms13" border="{pms16}"    color="#FF00FF" symbol="{PredefinedFillStyle.SYMBOL_CROSS}" />
+		<supermap:PredefinedFillStyle id="pms14" border="{pms16}"    color="#FF3300" symbol="{PredefinedFillStyle.SYMBOL_CROSS}" />
+		<supermap:PredefinedFillStyle id="pms15" border="{pms16}"    color="#9933FF" symbol="{PredefinedFillStyle.SYMBOL_CROSS}" />
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
@@ -30,12 +43,15 @@
 			
 			import mx.collections.ArrayCollection;
 			import mx.controls.Alert;
+			import mx.controls.LinkButton;
+			import mx.core.FlexGlobals;
 			import mx.core.UIComponent;
 			import mx.managers.PopUpManager;
 			import mx.rpc.AsyncResponder;
 			import mx.rpc.events.FaultEvent;
 			
 			import spark.components.CheckBox;
+			import spark.components.HGroup;
 			import spark.components.TextArea;
 			import spark.components.supportClasses.ItemRenderer;
 			
@@ -47,7 +63,13 @@
 			public var gisSearchFeatureLayer:FeaturesLayer;
 			[Bindable]
 			public var allData:ArrayCollection = new ArrayCollection();
-			public var arr:Array =["enterprise@zy_google:重点企业","pollution@zy_google:重污染源","company@zy_google:事业单位"];
+			public var arr:Array =["enterprise@zy_google:危化","linye@zy_google:林业",
+				"mingzheng@zy_google:民政","hospital@zy_google:医院",
+				"education@zy_google:教育","wenti@zy_google:文体",
+				"yaojian@zy_google:药监","shangwu@zy_google:商务",
+				"shizadian@zy_google:食杂店","pipeline@zy_google:管道",
+				"nongshui@zy_google:农水","huagongyuanqu@zy_google:化工园区",
+				"shequ@zy_google:社区","jiedao@zy_google:街道"];
 			//初始化方法
 			public function init():void{
 				for(var i:int=0;i<arr.length;i++){
@@ -98,16 +120,54 @@
 								switch(geotype) {
 									case Geometry.GEOPOINT: {
 										if(mark=="enterprise@zy_google"){
-											feature.style = pms1;
-										}else if(mark=="pollution@zy_google"){
+											if(feature.attributes.REMARK=="0"){
+												feature.style = pms1;
+											}else{
+												feature.style = pms10;
+											}
+										}else if(mark=="mingzheng@zy_google"){
 											feature.style = pms2;
-										}else if(mark=="company@zy_google"){
+										}else if(mark=="hospital@zy_google"){
 											feature.style = pms3;
+										}else if(mark=="education@zy_google"){
+											feature.style = pms4;
+										}else if(mark=="yaojian@zy_google"){
+											feature.style = pms5;
+										}else if(mark=="shangwu@zy_google"){
+											feature.style = pms6;
+										}else if(mark=="linye@zy_google"){
+											feature.style = pms7;
+										}else if(mark=="shizadian@zy_google"){
+											feature.style = pms8;
+										}else{
+											feature.style = pms9;
 										}
 										feature.addEventListener(MouseEvent.CLICK,featureClick);
 										gisSearchFeatureLayer.addFeature(feature);
 										break;
 									}
+									case Geometry.GEOLINE:
+									{
+										feature.style = pms11;
+										feature.addEventListener(MouseEvent.CLICK,featureClick);
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}
+									case Geometry.GEOREGION:
+									{
+										if(mark=="nongshui@zy_google"){
+											feature.style = pms12;
+										}else if(mark=="huagongyuanqu@zy_google"){
+											feature.style = pms13;
+										}else if(mark=="shequ@zy_google"){
+											feature.style = pms14;
+										}else{
+											feature.style = pms15;
+										}
+										feature.addEventListener(MouseEvent.CLICK,featureClick);
+										gisSearchFeatureLayer.addFeature(feature);
+										break;
+									}	 	
 								}
 							}
 						}
@@ -115,16 +175,62 @@
 				}
 			}
 			
-			public function featureClick(event:MouseEvent):void{
-				var featureTemp:Feature = event.currentTarget as Feature;
+			private function showFeature(featureTemp:Feature):void{
+				var hg:VGroup = new VGroup();
+				hg.height = 120;
+				hg.width = 250;
+				var linkButton1:LinkButton = new LinkButton();
+				linkButton1.label = "详细属性信息";
+				var linkButton2:LinkButton = new LinkButton();
+				linkButton2.label = "链接URL";
+				var linkButton3:LinkButton = new LinkButton();
+				linkButton3.label = "内部结构";
+				linkButton1.setStyle("textDecoration","underline");
+				linkButton2.setStyle("textDecoration","underline");
+				linkButton3.setStyle("textDecoration","underline");
+				linkButton1.setStyle("color","#0000ff");
+				linkButton2.setStyle("color","#0000ff");
+				linkButton3.setStyle("color","#0000ff");
+				linkButton1.addEventListener(MouseEvent.CLICK,linkButton1Click);
+				linkButton2.addEventListener(MouseEvent.CLICK,linkButton2Click);
+				linkButton3.addEventListener(MouseEvent.CLICK,linkButton3Click);
+				
 				var textArea:TextArea = new TextArea();
 				textArea.setStyle("borderVisible",false);
 				textArea.height = 50;
-				textArea.width = 150;
+				textArea.percentWidth = 100;
 				textArea.editable = false;
 				textArea.text= "类型：" + featureTemp.attributes.TYPE + "\n"
 					+"名称：" + featureTemp.attributes.NAME  ;
-				showInfoWindow("提示信息",textArea,featureTemp.geometry.center,true);
+				
+				var hg1:HGroup = new HGroup();
+				hg1.addElement(linkButton1);
+				hg1.addElement(linkButton2);
+				hg1.addElement(linkButton3);
+				hg.addElement(textArea);
+				hg.addElement(hg1);
+				showInfoWindow("提示信息",hg,featureTemp.geometry.center,true);
+			}
+			
+			public function featureClick(event:MouseEvent):void{
+				var featureTemp:Feature = event.currentTarget as Feature;
+				showFeature(featureTemp);
+			}
+			
+			private function linkButton2Click(event:Event):void{
+				var url:String="http://www.baidu.com"; 
+				var request:URLRequest=new URLRequest(url); 
+				navigateToURL(request,"_blank"); 
+			}
+			private function linkButton1Click(event:Event):void{
+				var messageView:MessageView = new MessageView();
+				PopUpManager.addPopUp(messageView,FlexGlobals.topLevelApplication as mian,false);
+				PopUpManager.centerPopUp(messageView);
+			}
+			private function linkButton3Click(event:Event):void{
+				var innerView:InnerView = new InnerView();
+				PopUpManager.addPopUp(innerView,FlexGlobals.topLevelApplication as mian,false);
+				PopUpManager.centerPopUp(innerView);
 			}
 			
 			public function initGroupLayer():void{

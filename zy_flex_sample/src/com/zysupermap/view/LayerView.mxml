@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="图层管理" creationComplete="init()" close="closeWindow(event)"
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100" height="200">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100" height="450">
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
@@ -62,7 +62,7 @@
 				this.subLayerBox.removeAllElements();
 				for each(var layer:ServerLayer in result.layersInfo)
 				{
-					if(layer.name.indexOf("@")!=-1){
+					if(layer.name.indexOf("@")!=-1&&layer.name.indexOf("#")==-1){
 						var checkBox:CheckBox = new CheckBox();
 						checkBox.label =layerNameCN(layer.name);
 						checkBox.name=layer.name;
@@ -79,6 +79,33 @@
 				(this.checkBoxes[changeIndex] as CheckBox).selected = event.target.selected;
 				var layerList:Array = new Array();
 				for each(var checkBox:CheckBox in this.checkBoxes){
+					var labelName:String = checkBox.name;
+					 if(labelName.indexOf("pipeline")!=-1){
+					}else if(labelName.indexOf("shequ")!=-1){
+						var layerStatusSQ:LayerStatus = new LayerStatus();
+						layerStatusSQ.isVisible=checkBox.selected;
+						layerStatusSQ.layerName = checkBox.name+"#1";
+						layerList.push(layerStatusSQ);
+						var layerStatusSQ2:LayerStatus = new LayerStatus();
+						layerStatusSQ2.isVisible=checkBox.selected;
+						layerStatusSQ2.layerName = checkBox.name+"#2";
+						layerList.push(layerStatusSQ2);
+					}else if(labelName.indexOf("bjborder")!=-1){
+					}else if(labelName.indexOf("grid")!=-1){
+						var layerStatusGrid:LayerStatus = new LayerStatus();
+						layerStatusGrid.isVisible=checkBox.selected;
+						layerStatusGrid.layerName = checkBox.name+"#1";
+						layerList.push(layerStatusGrid);
+						var layerStatusGrid2:LayerStatus = new LayerStatus();
+						layerStatusGrid2.isVisible=checkBox.selected;
+						layerStatusGrid2.layerName = checkBox.name+"#2";
+						layerList.push(layerStatusGrid2);
+					}else {
+						var layerStatus1:LayerStatus = new LayerStatus();
+						layerStatus1.isVisible=checkBox.selected;
+						layerStatus1.layerName = checkBox.name+"#1";
+						layerList.push(layerStatus1);
+					}
 					var layerStatus:LayerStatus = new LayerStatus();
 					layerStatus.isVisible=checkBox.selected;
 					layerStatus.layerName = checkBox.name;
@@ -105,22 +132,48 @@
 			} 
 			
 			public function layerNameCN(labelName:String):String{
-				var retStr:String = "其它";
+				var retStr:String;
 				if(labelName.indexOf("enterprise")!=-1){
-					retStr="重点企业";
-				}else if(labelName.indexOf("pollution")!=-1){
-					retStr="重污染源";
-				}else if(labelName.indexOf("company")!=-1){
-					retStr="事业单位"
+					retStr="危化";
+				}else if(labelName.indexOf("linye")!=-1){
+					retStr="林业";
+				}else if(labelName.indexOf("mingzheng")!=-1){
+					retStr="民政"
+				}else if(labelName.indexOf("hospital")!=-1){
+					retStr = "医院";
+				}else if(labelName.indexOf("education")!=-1){
+					retStr = "教育";
+				}else if(labelName.indexOf("yaojian")!=-1){
+					retStr = "药监";
+				}else if(labelName.indexOf("shangwu")!=-1){
+					retStr = "商务";
+				}else if(labelName.indexOf("shizadian")!=-1){
+					retStr = "食杂店";
+				}else if(labelName.indexOf("pipeline")!=-1){
+					retStr = "管道";
+				}else if(labelName.indexOf("nongshui")!=-1){
+					retStr = "农水";
+				}else if(labelName.indexOf("huagongyuanqu")!=-1){
+					retStr = "化工园区";
+				}else if(labelName.indexOf("shequ")!=-1){
+					retStr = "社区";
+				}else if(labelName.indexOf("jiedao")!=-1){
+					retStr = "街道";
 				}else if(labelName.indexOf("bjborder")!=-1){
-					retStr = "行政周边";
+					retStr="边界";
+				}else if(labelName.indexOf("grid")!=-1){
+					retStr="网格";
+				}else if(labelName.indexOf("wenti")!=-1){
+					retStr="文体";
+				}else{
+					retStr=labelName;
 				}
 				return retStr;
 			}
 			
 		]]>
 	</fx:Script>
-	<s:VGroup width="100%" height="100%" id="subLayerBox" horizontalAlign="center">
+	<s:VGroup width="100%" height="100%" id="subLayerBox" horizontalAlign="left">
 		
 	</s:VGroup>
 </s:TitleWindow>
