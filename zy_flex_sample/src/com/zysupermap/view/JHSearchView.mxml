@@ -205,7 +205,7 @@
 			}
 			
 			private function linkButton2Click(event:Event):void{
-				var url:String="http://www.baidu.com"; 
+				var url:String="http://localhost:8080/docs/config/cluster-manager.html#Common_Attributes"; 
 				var request:URLRequest=new URLRequest(url); 
 				navigateToURL(request,"_blank"); 
 			}

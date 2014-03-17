@@ -11,6 +11,6 @@
 		</s:fill>
 	</s:Rect>
 	<s:HGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
-		<s:Label text="版权所有：ZYSoft个人版本  版本号：1.0.0" />
+		<s:Label text="版权所有：ZYSoft  版本号：1.0.0" />
 	</s:HGroup>
 </s:Group>

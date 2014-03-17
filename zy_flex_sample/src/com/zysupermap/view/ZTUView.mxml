@@ -218,7 +218,8 @@
 			}
 			
 			private function linkButton2Click(event:Event):void{
-				var url:String="http://www.baidu.com"; 
+				//var url:String="D:\\tomcat\\webapps\\shuxing\\index.html"; 
+				var url:String="http://localhost:8080/shuxing/index.html"; 
 				var request:URLRequest=new URLRequest(url); 
 				navigateToURL(request,"_blank"); 
 			}

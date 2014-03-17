@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"  title="空间查询" creationComplete="init()" close="closeWindow(event)"
-			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" width="250" height="300" xmlns:view="com.zysupermap.view.*">
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:view="com.zysupermap.view.*"
+			   width="250" height="300" close="closeWindow(event)" creationComplete="init()"
+			   title="空间查询"
+			   title.search="图层查询">
 	<fx:Declarations>
 		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
 	</fx:Declarations>
@@ -167,13 +171,14 @@
 			}
 			
 			private function linkButton2Click(event:Event):void{
-				var url:String="http://www.baidu.com"; 
+				//var url:String="http://www.baidu.com"; 
+				var url:String="http://localhost:8080"; 
 				var request:URLRequest=new URLRequest(url); 
 				navigateToURL(request,"_blank"); 
 			}
 			private function linkButton1Click(event:Event):void{
 				var messageView:MessageView = new MessageView();
-				PopUpManager.addPopUp(messageView,FlexGlobals.topLevelApplication as mian,false);
+				PopUpManager.addPopUp(messageView,FlexGlobals.topLevelApplication as mian,false);				
 				PopUpManager.centerPopUp(messageView);
 			}
 			private function linkButton3Click(event:Event):void{
@@ -248,7 +253,11 @@
 				var queryBySQLParam:QueryBySQLParameters = new QueryBySQLParameters();
 				var filter:FilterParameter = new FilterParameter();
 				filter.name =datasetName;
-				filter.attributeFilter = "name like '%"+resourceName.text+"%'";
+				if(resourceName.text == "*"){
+					filter.attributeFilter = "1==1";
+				}else{
+					filter.attributeFilter = "name like '%"+resourceName.text+"%'";
+				}				
 				queryBySQLParam.filterParameters = [filter];
 				queryBySQLParam.returnContent = true;
 				var queryByDistanceService:QueryBySQLService = new QueryBySQLService(mapUrl);
@@ -355,7 +364,7 @@
 	<s:VGroup left="5" top="5" width="100%" height="100%" right="5" horizontalAlign="center" gap="10" includeIn="search">
 		<s:HGroup width="100%" verticalAlign="middle">
 			<s:Label text="名称：" />
-			<s:TextInput width="100%" id="resourceName"  enter="ShowSelectItems()" />
+			<s:TextInput id="resourceName" width="100%" enter="ShowSelectItems()" text="*"/>
 		</s:HGroup>
 		<s:Label text="图层类别：" width="100%" textAlign="left" />
 		<s:VGroup id="groupLayer" width="90%" height="100%" horizontalAlign="center">

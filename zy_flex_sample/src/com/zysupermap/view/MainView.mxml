@@ -43,7 +43,7 @@
 				mainNode.label = "首页";
 				mainNode.uri = "main";
 				var sjfxNode:Object = new Object();
-				sjfxNode.label = "空间查询";
+				sjfxNode.label = "图层查询";
 				sjfxNode.uri = "kjcx";
 				var jhcxNode:Object = new Object();
 				jhcxNode.label = "几何查询";
