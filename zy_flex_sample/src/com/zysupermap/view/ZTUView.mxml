@@ -202,7 +202,7 @@
 				textArea.editable = false;
 				textArea.text= "类型：" + featureTemp.attributes.TYPE + "\n"
 					+"名称：" + featureTemp.attributes.NAME  ;
-				
+				linkButton3.id=featureTemp.attributes.imageURL;
 				var hg1:HGroup = new HGroup();
 				hg1.addElement(linkButton1);
 				hg1.addElement(linkButton2);
@@ -229,7 +229,9 @@
 				PopUpManager.centerPopUp(messageView);
 			}
 			private function linkButton3Click(event:Event):void{
+				var lbTemp:LinkButton = event.currentTarget as LinkButton;
 				var innerView:InnerView = new InnerView();
+				innerView.imageURL = "com/zysupermap/images/shuxingimage/"+lbTemp.id;
 				PopUpManager.addPopUp(innerView,FlexGlobals.topLevelApplication as mian,false);
 				PopUpManager.centerPopUp(innerView);
 			}

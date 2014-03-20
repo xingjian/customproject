@@ -2,9 +2,11 @@ package com.zysupermap.view
 {
 	import com.supermap.web.core.*;
 	import com.supermap.web.mapping.TiledCachedLayer;
+	
 	import flash.display.*;
 	import flash.events.*;
 	import flash.net.*;
+	
 	import mx.events.*;
 	
 	public class TiledGoogleMapLayer extends TiledCachedLayer
@@ -19,6 +21,7 @@ package com.zysupermap.view
 		public  const MAP_TYPE_SATELLITE:String = "satellite";
 		public  const MAP_TYPE_TERRAIN:String = "terrain";
 		public  const MAP_TYPE_ANNOTATION:String = "annotation";
+		public var userAgent:Boolean = true;
 		
 		public function TiledGoogleMapLayer(){
 			this.bounds = new Rectangle2D(-20037508.3392, -20037508.3392, 20037508.3392, 20037508.3392);
@@ -74,7 +77,18 @@ package com.zysupermap.view
 			serverURL = serverURL.replace("{tileurl}", tileUrl);
 			serverURL = serverURL.replace("{GALILEO}", "Galileo".substring(0,((3 * col + row) & 7)));
 			var urlRequest:URLRequest = null;
-			urlRequest =  new URLRequest(serverURL);
+			if(userAgent){
+				var variables:URLVariables = new URLVariables();
+				variables.mapURL = serverURL;
+				variables.x = col;
+				variables.y = row;
+				variables.z = level;
+				variables.maptype = _mapType;
+				urlRequest =  new URLRequest("http://localhost:8888/zysupermap/"+"wmts");
+				urlRequest.data = variables;
+			}else{
+				urlRequest =  new URLRequest(serverURL);
+			}
 			return urlRequest;
 		}
 		

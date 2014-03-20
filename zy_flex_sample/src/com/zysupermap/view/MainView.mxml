@@ -34,8 +34,8 @@
 			}
 			
 			public function initMap():void{
-				map.viewBounds = new Rectangle2D(12848076.2767,4785164.1179,13080882.6149,5021027.4598);
-				compass.defaultFullExtent = new Rectangle2D(12848076.2767,4785164.1179,13080882.6149,5021027.4598);
+				map.viewBounds = new Rectangle2D(14081439.5525,5447913.5153,14096941.2207,5454754.271);
+				compass.defaultFullExtent = new Rectangle2D(14081439.5525,5447913.5153,14096941.2207,5454754.271);
 			}
 			
 			private function initMenuData():void{

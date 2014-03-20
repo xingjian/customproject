@@ -9,6 +9,9 @@
 		<![CDATA[
 			import mx.managers.PopUpManager;
 			
+			[Bindable]
+			public var imageURL:String = "com/zysupermap/images/3d.jpg";
+			
 			public function closeWindow(event:Event = null):void{
 				PopUpManager.removePopUp(this);
 			}
@@ -16,6 +19,6 @@
 		]]>
 	</fx:Script>
 	<s:VGroup width="100%" height="100%" horizontalAlign="center">
-		<s:Image source="com/zysupermap/images/3d.jpg" />
+		<s:Image source="{imageURL}" />
 	</s:VGroup>
 </s:TitleWindow>
