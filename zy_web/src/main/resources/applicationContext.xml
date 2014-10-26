@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation=" http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
+	<!-- read jdbc.properties -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:jdbc.properties</value>
+			</list>
+		</property>
+	</bean>
+	<!-- config dataSource -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+		<property name="driverClass"><value>${jdbc.driverClassName}</value></property>
+		<property name="jdbcUrl"><value>${jdbc.url}</value></property>
+		<property name="user"><value>${jdbc.username}</value></property>
+		<property name="password"><value>${jdbc.password}</value></property>
+		<property name="initialPoolSize"><value>${jdbc.initialPoolSize}</value></property>
+		<property name="maxPoolSize"><value>${jdbc.maxPoolSize}</value></property>
+	</bean>
+	<!-- config session -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource"><ref local="dataSource" /></property>
+		<property name="lobHandler" ref="lobHandler" />
+		<property name="annotatedClasses">
+			<list>
+				<value>com.promise.cn.common.domain.PBUser</value>
+				<value>com.promise.cn.common.domain.Dict</value>
+				<value>com.promise.cn.common.domain.DictContent</value>
+				<value>com.promise.cn.common.domain.Menu</value>
+				<value>com.promise.cn.common.domain.Dept</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+           <props>
+               <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+               <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+               <prop key="jdbc.fetch_size">${jdbc.fetch_size}</prop>
+               <prop key="jdbc.batch_size">${jdbc.batch_size}</prop>
+           </props>
+        </property>
+	</bean>
+	<!-- config sessionFactory property lobHandler-->
+	<bean id="lobHandler" class="org.springframework.jdbc.support.lob.DefaultLobHandler" lazy-init="true"/>
+	<!--事务管理采用annotaion方式  共5种方式-->
+	<bean id="txManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean id="jdbcTxManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<tx:annotation-driven transaction-manager="txManager"/>
+	<!-- framework config -->
+	<bean id="persistenceManager" class="com.promise.cn.framework.service.impl.HibernatePersistenceManagerImpl">
+		<property name="sessionFactory">
+			<ref bean="sessionFactory" />
+		</property>
+	</bean>
+	<bean id="queryManager" class="com.promise.cn.framework.service.impl.HibernateQueryManagerImpl">
+		<property name="sessionFactory">
+			<ref bean="sessionFactory" />
+		</property>
+	</bean>
+	<bean id="jdbcPersistenceManager" class="com.promise.cn.framework.service.impl.JdbcPersistenceManagerImpl">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+</beans>
